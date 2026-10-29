@@ -1,0 +1,88 @@
+# Builds MACT Studio for Windows (installer + portable) and macOS (universal .dmg).
+# On a version tag (v1.0.0, ...) it also creates a DRAFT GitHub Release with the
+# installers, the firmware .hex and the PCB gerbers: check it, then publish it by hand.
+# Run it by hand from the Actions tab (workflow_dispatch) to only build the installers.
+name: Build MACT Studio
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+          - os: macos-14
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.22.1
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: npx electron-builder --win --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false   # no code signing certificate
+      # macOS in three explicit steps. Merging the x64 and arm64 builds into the
+      # universal app breaks the signatures of the Electron files, and without a
+      # valid (ad-hoc) signature macOS 15+ cannot grant the Local Network
+      # permission: every connection to the board fails. So: build the app
+      # folder, ad-hoc sign the WHOLE merged bundle, then make the .dmg from it.
+      - name: Build app bundle (macOS, universal)
+        if: runner.os == 'macOS'
+        run: npx electron-builder --mac dir --universal --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Ad-hoc sign and verify (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          APP="dist/mac-universal/MACT Studio.app"
+          ls -la dist
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dv "$APP"
+      - name: Build .dmg from the signed app (macOS)
+        if: runner.os == 'macOS'
+        run: npx electron-builder --mac dmg --universal --prepackaged "dist/mac-universal/MACT Studio.app" --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mact-studio-${{ matrix.os }}
+          path: |
+            app/dist/*.exe
+            app/dist/*.dmg
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          files: |
+            dist/*
+            firmware/*.hex
+            hardware/*-gerbers.zip
+            SHA256SUMS

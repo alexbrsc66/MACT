@@ -1,0 +1,46 @@
+{
+  "_set": "sprint2_demo",
+  "_title": "RetroCampus demo for Sprint 2",
+  "_note": "Demo ROM at 2000 and again at E000 (6502 vectors).",
+  "regions": [
+    {
+      "file": "demo.bin",
+      "name": "demo.bin",
+      "size": 8192,
+      "crc": 1662992051,
+      "start": 8192,
+      "mode": 1,
+      "enabled": true
+    },
+    {
+      "file": "demo.bin",
+      "name": "demo.bin (E000)",
+      "size": 8192,
+      "crc": 1662992051,
+      "start": 57344,
+      "mode": 1,
+      "enabled": true
+    }
+  ],
+  "banks": [],
+  "watches": [
+    {
+      "name": "auto x",
+      "addr": 16,
+      "len": 4,
+      "src": 0
+    },
+    {
+      "name": "auto y/img",
+      "addr": 24,
+      "len": 8,
+      "src": 0
+    },
+    {
+      "name": "flag/ptr",
+      "addr": 32,
+      "len": 10,
+      "src": 0
+    }
+  ]
+}

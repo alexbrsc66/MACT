@@ -1,0 +1,7 @@
+_release/
+*.bak
+~*
+node_modules/
+app/dist/
+Thumbs.db
+desktop.ini

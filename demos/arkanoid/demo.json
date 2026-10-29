@@ -1,0 +1,25 @@
+{
+  "_set": "demo",
+  "_title": "RetroCampus demo for the Arkanoid board (logo, scroller, music)",
+  "_note": "Demo ROM at 0000. ROM 2 (8000-BFFF) is not used.",
+  "regions": [
+    {
+      "file": "demo.bin",
+      "name": "demo.bin",
+      "size": 32768,
+      "crc": 594752213,
+      "start": 0,
+      "mode": 1,
+      "enabled": true
+    }
+  ],
+  "banks": [],
+  "watches": [
+    {
+      "name": "frame/tick",
+      "addr": 49152,
+      "len": 12,
+      "src": 0
+    }
+  ]
+}

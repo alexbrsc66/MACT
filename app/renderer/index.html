@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MACT Studio</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; font: 13px/1.4 system-ui, sans-serif; background: #14161b; color: #d6dae1; }
+  header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #1b1e24; border-bottom: 1px solid #2a2e37; flex-wrap: wrap; }
+  h1 { font-size: 15px; margin: 0 10px 0 0; color: #ffd479; }
+  input, select, button { font: inherit; }
+  input[type=text] { background: #12141a; border: 1px solid #2a2e37; border-radius: 4px; color: #d6dae1; padding: 4px 6px; }
+  button { background: #262a33; border: 1px solid #3a3f4b; border-radius: 5px; color: #d6dae1; padding: 5px 10px; cursor: pointer; }
+  button:hover { background: #313742; }
+  button.primary { background: #3a5bdc; border-color: #5b7cff; color: #fff; }
+  #status { margin-left: auto; font-weight: 600; color: #9aa0aa; }
+  #status.on { color: #57d38c; }
+  main { padding: 14px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #23262e; }
+  th { color: #8ab4f8; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  td .addr { width: 74px; font-family: monospace; }
+  td .genname { width: 120px; margin-right: 4px; }
+  td .gensize { width: 60px; font-family: monospace; }
+  .muted { color: #6b7280; }
+  #log { background: #0f1116; border: 1px solid #23262e; border-radius: 6px; padding: 8px; height: 160px; overflow: auto; font-family: monospace; font-size: 12px; white-space: pre-wrap; }
+  .bar { height: 4px; background: #23262e; border-radius: 2px; overflow: hidden; margin-top: 2px; }
+  .bar > i { display: block; height: 100%; width: 0; background: #57d38c; }
+  .row-actions button { padding: 3px 7px; }
+  .row-actions button[data-up], .row-actions button[data-down] { padding: 3px 6px; margin-right: 2px; }
+  td.crc { font-family: monospace; letter-spacing: 0.03em; }
+  h2 { font-size: 13px; color: #ffd479; margin: 16px 0 6px; }
+  .bits { display: inline-flex; gap: 1px; font-family: monospace; font-size: 11px; }
+  .bits label { display: inline-flex; flex-direction: column; align-items: center; width: 16px; }
+  .bits input { margin: 0; }
+  .msg-err { color: #ff7b72; }
+  .msg-warn { color: #e3b341; }
+  .msg-ok { color: #57d38c; }
+  td .reg { width: 58px; font-family: monospace; }
+  td .small { width: 34px; }
+  .preview { font-family: monospace; font-size: 11px; border-collapse: collapse; margin: 4px 0 8px; width: auto; }
+  .preview td, .preview th { padding: 1px 4px; border: 1px solid #23262e; text-align: center; }
+  .preview th { color: #6b7280; font-size: 10px; text-transform: none; }
+  .b0 { background: #1d2a44; } .b1 { background: #2d4a2b; } .b2 { background: #4a3a1d; } .b3 { background: #4a1d3a; }
+  .b4 { background: #1d4a4a; } .b5 { background: #3a1d4a; } .b6 { background: #4a4a1d; } .b7 { background: #2b2b2b; }
+  nav.tabs { display: flex; gap: 2px; padding: 0 14px; background: #1b1e24; border-bottom: 1px solid #2a2e37; }
+  nav.tabs .tab { border: none; border-radius: 0; background: transparent; padding: 7px 14px; color: #9aa0aa; border-bottom: 2px solid transparent; }
+  nav.tabs .tab.on { color: #ffd479; border-bottom-color: #ffd479; }
+  .dbg { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(380px, 1fr); gap: 16px; align-items: start; }
+  .dbg > section { min-width: 0; overflow-x: auto; }
+  #termOut { background: #0f1116; border: 1px solid #23262e; border-radius: 6px; padding: 8px; overflow: auto;
+             height: calc(100vh - 300px); min-height: 160px; cursor: text;
+             font-family: monospace; font-size: 12px; white-space: pre-wrap; margin: 0 0 6px; }
+  @media (max-width: 1100px) {
+    .dbg { grid-template-columns: 1fr; }
+    #termOut { height: 300px; }
+  }
+  #termIn { width: 100%; box-sizing: border-box; font-family: monospace; background: #12141a; border: 1px solid #2a2e37;
+            border-radius: 4px; color: #d6dae1; padding: 6px; }
+  .tq { padding: 3px 7px; font-family: monospace; }
+  .wdata { font-family: monospace; font-size: 12px; white-space: nowrap; }
+  .wdata span { margin-right: 3px; }
+  .wdata .msg-err { white-space: normal; font-family: system-ui, sans-serif; }
+  #wrows td { padding: 4px 5px; }
+  .wdata .chg { background: #6b2b2b; color: #fff; border-radius: 2px; }
+  .wdata .na { color: #4b5563; }
+  td .wname { width: 84px; }
+  td .wlen { width: 32px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>MACT Studio</h1>
+    <label class="muted">host <input type="text" id="host" value="" placeholder="board IP" size="12" title="IP address of the board: shown by the net command on the serial console. The app remembers the last one used."></label>
+    <label class="muted">port <input type="text" id="port" value="3334" size="4"></label>
+    <button id="btnConn" class="primary">Connect</button>
+    <button id="btnDisc">Disconnect</button>
+    <span id="status">- disconnected -</span>
+  </header>
+  <nav class="tabs">
+    <button class="tab on" data-tab="tabMem">Memory</button>
+    <button class="tab" data-tab="tabDebug">Debug</button>
+  </nav>
+  <main id="tabMem">
+    <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap">
+      <button id="btnAdd">+ Add ROM…</button>
+      <button id="btnAddRegion">+ Add plain region</button>
+      <button id="btnSendAll" class="primary">▶ Send all</button>
+      <button id="btnList">List from board</button>
+      <span style="flex:1"></span>
+      <button id="btnSave">Save config…</button>
+      <button id="btnLoad">Load config…</button>
+    </div>
+    <table>
+      <thead><tr><th></th><th>File</th><th>CRC</th><th>Start</th><th>Range</th><th>Mode</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <h2>Bank windows</h2>
+    <div class="muted" style="margin-bottom:6px">
+      CPU range whose content changes with a board register (bank switching).
+      The file holds all the banks one after the other; the firmware watches the CPU writes
+      to the register and switches the bank. Max 4 windows, 64 KB image pool. Sent after the regions.
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap">
+      <button id="btnAddBank">+ Add bank window…</button>
+      <button id="btnBankState">Bank state from board</button>
+    </div>
+    <table>
+      <thead><tr><th></th><th>Image file</th><th>CRC</th><th>CPU window</th><th>Mode</th>
+        <th>Register address / address mask</th><th>Selector data bits (7…0)</th><th>Invert (7…0)</th><th>Reset</th><th>Check</th><th></th></tr></thead>
+      <tbody id="bankrows"></tbody>
+    </table>
+
+    <div id="log"></div>
+  </main>
+
+  <main id="tabDebug" hidden>
+    <div class="dbg">
+      <section>
+        <h2 style="margin-top:0">Watch</h2>
+        <div class="muted" style="margin-bottom:6px">
+          Memory ranges (max 16 bytes) read from the board. <b>mirror</b> = last value read/written by the CPU,
+          no bus cycle (recommended); <b>CPU view</b> = real read on the bus (avoid it on I/O registers).
+          Bytes changed since the last read are highlighted.
+        </div>
+        <div style="display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap; align-items:center">
+          <button id="wAdd">+ Add range</button>
+          <button id="wRefresh" class="primary">Refresh all</button>
+          <label class="muted">auto <select id="wAuto">
+            <option value="0">off</option><option value="500">0.5 s</option><option value="1000">1 s</option>
+            <option value="2000">2 s</option><option value="5000">5 s</option></select></label>
+          <span id="wStatus" class="muted"></span>
+        </div>
+        <table>
+          <thead><tr><th>Name</th><th>Address</th><th>Len</th><th>Source</th><th>Data (hex)</th><th>Changes</th><th></th></tr></thead>
+          <tbody id="wrows"></tbody>
+        </table>
+      </section>
+      <section>
+        <h2 style="margin-top:0">Terminal <span class="muted" style="font-weight:normal">(firmware console, port 3335)</span></h2>
+        <div style="display:flex; gap:6px; margin-bottom:6px; flex-wrap:wrap; align-items:center">
+          <button id="tConn" class="primary">Connect terminal</button>
+          <button id="tDisc">Disconnect</button>
+          <span id="tStatus" class="muted">disconnected</span>
+          <span style="flex:1"></span>
+          <span class="muted">quick:</span>
+          <button class="tq" data-cmd="go" title="start the emulation">go</button><button class="tq" data-cmd="st" title="stop the emulation">st</button>
+          <button class="tq" data-cmd="re" title="CPU reset">re</button>
+          <button class="tq" data-cmd="rg" title="registers and current instruction">rg</button><button class="tq" data-cmd="spd 5" title="effective speed over 5 s">spd</button>
+          <button class="tq" data-cmd="bank" title="bank windows state">bank</button><button class="tq" data-cmd="net" title="network status">net</button>
+          <button id="tClear">clear</button>
+        </div>
+        <pre id="termOut"></pre>
+        <input type="text" id="termIn" placeholder="command (? = help, up/down arrows = history, Enter = send)" autocomplete="off" spellcheck="false">
+      </section>
+    </div>
+  </main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const MODES = [['1','rom'],['2','ram'],['3','ram-mirror'],['0','hw (not mapped)']];
+  let regions = [];  // { file, name, size, start, mode, enabled }
+
+  function log(s) { const el = $('log'); el.textContent += s + '\n'; el.scrollTop = el.scrollHeight; }
+  const hex = (n) => '0x' + (n & 0xffff).toString(16).toUpperCase().padStart(4, '0');
+  const crcHex = (n) => (n === undefined || n === null) ? '—' : (n >>> 0).toString(16).toUpperCase().padStart(8, '0');
+  const hex2 = (n) => (n & 0xff).toString(16).toUpperCase().padStart(2, '0');
+  const parseHex = (s) => { const v = parseInt(String(s).trim().replace(/^0x/i, ''), 16); return isNaN(v) ? null : v; };
+
+  // ================= Bank windows =================
+  // { file, name, size, crc, start, end, mode(1 rom/2 ram), regAddr, regMask,
+  //   bits, inv, resetBank, enabled, preview }
+  let banks = [];
+  let bankLive = [];          // last BANK_INFO from the firmware, per window
+  const BANK_WINDOWS = 4, BANK_POOL = 0x10000;
+  const BANK_ERR = { 1: 'window number', 2: 'invalid CPU range', 3: 'image outside the pool',
+                     4: 'image smaller than the window', 5: 'no selector bit',
+                     6: 'invalid mode', 7: 'overlaps another window', 255: 'short message' };
+
+  const popcount = (m) => { let n = 0; for (; m; m &= m - 1) n++; return n; };
+
+  // Computed window end: start + file size / 2^(selector bits) - 1.
+  // null if start or bits are missing, or if the result is not a valid window.
+  function autoEnd(b) {
+    if (b.start == null || !b.bits) { b.end = null; return; }
+    const w = b.size / (1 << popcount(b.bits));
+    b.end = (Number.isInteger(w) && w >= 256 && w % 256 === 0 && b.start + w <= 0x10000) ? b.start + w - 1 : null;
+  }
+
+  // Written value -> bank, same rule as the firmware (bankwin.c).
+  function bankOf(b, v, nb) {
+    const x = (v ^ b.inv) & 0xff; let bank = 0, k = 0;
+    for (let bit = 0; bit < 8; bit++) if (b.bits & (1 << bit)) { bank |= ((x >> bit) & 1) << k; k++; }
+    return nb ? bank % nb : bank;
+  }
+
+  // Enabled windows in sending order, with number and position in the pool.
+  function bankLayout() {
+    let base = 0, win = 0; const out = [];
+    banks.forEach((b, i) => {
+      if (!b.enabled || !b.file) return;
+      out.push({ i, win: win++, imgBase: base });
+      base += Math.ceil(b.size / 256) * 256;
+    });
+    return out;
+  }
+
+  // Checks of a window: errors (block sending) and warnings.
+  function bankCheck(i) {
+    const b = banks[i], err = [], warn = [], info = [];
+    if (b.start == null) {
+      err.push('set the window start (the end is computed: start + file / 2^selector bits)');
+      return { err, warn, info, nb: 0, me: null };
+    }
+    if (b.end == null) {
+      err.push(b.bits ? `with ${popcount(b.bits)} bits the window would be ${b.size / (1 << popcount(b.bits))} B:` +
+                        ' it must be a multiple of 256 B and end within 0xFFFF (change bits or start, or type the end by hand)'
+                      : 'choose the selector data bits: the window end is computed from them');
+      return { err, warn, info, nb: 0, me: null };
+    }
+    const win = b.end - b.start + 1;
+    if ((b.start & 0xff) !== 0 || (b.end & 0xff) !== 0xff || b.end <= b.start)
+      err.push('the window must be whole pages (start xx00, end xxFF)');
+    if (!b.file) err.push('no file');
+    else if (win > 0 && b.size < win) err.push('file smaller than the window');
+    else if (win > 0 && b.size % win) warn.push('last ' + (b.size % win) + ' bytes ignored');
+    if (!b.bits) err.push('choose at least one selector data bit');
+    const nb = win > 0 && b.size >= win ? Math.min(255, Math.floor(b.size / win)) : 0;
+    // selector bits -> addressable banks -> expected file size
+    const nbits = popcount(b.bits), reach = 1 << nbits;
+    if (b.bits && win > 0) {
+      const need = reach * win;
+      if (b.size !== need)   // only when the end was typed by hand
+        warn.push(`${nbits} bits = ${reach} banks x ${win} B = ${need} B expected, the file is ${b.size} B` +
+          (reach > nb && nb ? ` (banks from ${nb} up are not in the file: they wrap to bank 0)` : '') +
+          (reach < nb ? ` (only ${reach} of ${nb} banks reachable)` : ''));
+    }
+    // ADDRESS mask: how many addresses answer as the register
+    const free = 16 - popcount(b.regMask & 0xffff), naddr = 1 << free;
+    const ra = b.regAddr & b.regMask;
+    if (naddr > 1) {
+      const pages = new Set(); for (let p = 0; p < 256; p++) if (((p << 8) & b.regMask & 0xff00) === (ra & 0xff00)) pages.add(p);
+      if (pages.size > 1)
+        err.push(`the register answers at ${naddr} addresses spread over ${pages.size} pages (address mask ${hex(b.regMask)}):` +
+          ` the mask is for the ADDRESS, not the data. FFFF = only ${hex(b.regAddr)}, FFF8 = 8 consecutive mirrors`);
+      else
+        info.push(`register: ${naddr} addresses (mirrors) in page ${hex(ra & 0xff00).slice(0, 4)}xx`);
+    }
+    if (ra >= b.start && ra <= b.end) warn.push('the register is inside the window');
+    if (b.resetBank >= (nb || 1)) warn.push('reset bank beyond the banks in the file');
+    regions.forEach((r) => {
+      if (r.enabled && r.start <= b.end && b.start <= r.start + r.size - 1)
+        warn.push('covers region ' + r.name + ' (' + hex(r.start) + '-' + hex(r.start + r.size - 1) + ')');
+    });
+    banks.forEach((o, j) => {
+      if (j !== i && o.enabled && b.enabled && o.start != null && o.end != null && o.start <= b.end && b.start <= o.end)
+        err.push('overlaps window ' + (j + 1));
+    });
+    const lay = bankLayout(), me = lay.find(x => x.i === i);
+    if (me && me.win >= BANK_WINDOWS) err.push('at most ' + BANK_WINDOWS + ' windows');
+    if (me && me.imgBase + b.size > BANK_POOL) err.push('image pool (64 KB) full');
+    return { err, warn, info, nb, me };
+  }
+
+  function bitBoxes(i, key, val, enabledMask) {
+    let h = '<span class="bits">';
+    for (let bit = 7; bit >= 0; bit--) {
+      const dis = enabledMask !== undefined && !(enabledMask & (1 << bit));
+      h += `<label title="bit ${bit}"><input type="checkbox" data-bi="${i}" data-bk="${key}" data-bit="${bit}" ` +
+           `${val & (1 << bit) ? 'checked' : ''} ${dis ? 'disabled' : ''}>${bit}</label>`;
+    }
+    return h + '</span>';
+  }
+
+  // Preview: for each value 00-FF written to the register, the selected bank.
+  function bankPreview(b, nb) {
+    let h = '<table class="preview"><tr><th></th>';
+    for (let c = 0; c < 16; c++) h += '<th>x' + c.toString(16).toUpperCase() + '</th>';
+    h += '</tr>';
+    for (let r = 0; r < 16; r++) {
+      h += '<tr><th>' + r.toString(16).toUpperCase() + 'x</th>';
+      for (let c = 0; c < 16; c++) { const k = bankOf(b, r * 16 + c, nb); h += `<td class="b${k & 7}">${k}</td>`; }
+      h += '</tr>';
+    }
+    return h + '</table>';
+  }
+
+  function renderBanks() {
+    const tb = $('bankrows'); tb.innerHTML = '';
+    banks.forEach((b, i) => {
+      const chk = bankCheck(i);
+      const live = chk.me && bankLive[chk.me.win] && bankLive[chk.me.win].active
+        ? `<div class="msg-ok">board: bank ${bankLive[chk.me.win].cur}/${bankLive[chk.me.win].nbanks}, switches ${bankLive[chk.me.win].switches}</div>` : '';
+      const msgs = chk.err.map(m => `<div class="msg-err">✕ ${m}</div>`).join('') +
+                   chk.warn.map(m => `<div class="msg-warn">! ${m}</div>`).join('') +
+                   chk.info.map(m => `<div class="muted">${m}</div>`).join('') +
+                   (!chk.err.length ? `<div class="msg-ok">${chk.nb} banks of ${b.end - b.start + 1} B` +
+                     (chk.me ? `, window ${chk.me.win}, pool ${hex(chk.me.imgBase)}` : '') + '</div>' : '') + live;
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        `<td><input type="checkbox" ${b.enabled ? 'checked' : ''} data-bi="${i}" data-bk="enabled"></td>` +
+        `<td>${b.name || '—'} <span class="muted">(${b.size} B)</span>` +
+          ` <button data-bpick="${i}" title="Change file">…</button><div class="bar"><i data-bbar="${i}"></i></div></td>` +
+        `<td class="muted crc">${crcHex(b.crc)}</td>` +
+        `<td><input type="text" class="addr" value="${b.start == null ? '' : hex(b.start)}" placeholder="start" data-bi="${i}" data-bk="start"` +
+              ` title="Window start (xx00). The end is recomputed: start + file / 2^selector bits"> – ` +
+            `<input type="text" class="addr" value="${b.end == null ? '' : hex(b.end)}" placeholder="auto" data-bi="${i}" data-bk="end"` +
+              ` title="Computed from start, file and selector bits; can be typed by hand"></td>` +
+        `<td><select data-bi="${i}" data-bk="mode"><option value="1" ${b.mode === 1 ? 'selected' : ''}>rom</option>` +
+            `<option value="2" ${b.mode === 2 ? 'selected' : ''}>ram</option></select></td>` +
+        `<td><input type="text" class="reg" value="${hex(b.regAddr)}" data-bi="${i}" data-bk="regAddr" title="CPU address of the bank select register">` +
+            ` / <input type="text" class="reg" value="${hex(b.regMask)}" data-bi="${i}" data-bk="regMask" title="ADDRESS mask (decoding), not data: FFFF = that address only; FFF8 = 8 consecutive mirrors. The data bits are the 'Selector data bits' boxes.">` +
+            `<div class="muted" style="font-size:11px">${popcount(b.regMask & 0xffff) === 16 ? 'only ' + hex(b.regAddr) : (1 << (16 - popcount(b.regMask & 0xffff))) + ' addresses'}</div></td>` +
+        `<td>${bitBoxes(i, 'bits', b.bits)}</td>` +
+        `<td>${bitBoxes(i, 'inv', b.inv, b.bits)}</td>` +
+        `<td><input type="text" class="small" value="${b.resetBank}" data-bi="${i}" data-bk="resetBank" title="Bank at reset (decimal)"></td>` +
+        `<td>${msgs}</td>` +
+        `<td class="row-actions"><button data-bprev="${i}">${b.preview ? 'hide' : 'preview'}</button> ` +
+          `<button data-bclr="${i}">clear</button> <button data-bdel="${i}">✕</button></td>`;
+      tb.appendChild(tr);
+      if (b.preview) {
+        const pr = document.createElement('tr');
+        pr.innerHTML = `<td></td><td colspan="10"><span class="muted">value written to the register → bank` +
+          ` (row = high digit, column = low digit)</span>${bankPreview(b, chk.nb)}</td>`;
+        tb.appendChild(pr);
+      }
+    });
+  }
+
+  $('bankrows').addEventListener('change', (e) => {
+    const t = e.target, i = +t.dataset.bi, k = t.dataset.bk;
+    if (isNaN(i) || !k) return;
+    const b = banks[i];
+    if (t.dataset.bit !== undefined) {
+      const m = 1 << +t.dataset.bit;
+      b[k] = t.checked ? (b[k] | m) : (b[k] & ~m);
+      if (k === 'bits') { b.inv &= b.bits; autoEnd(b); }   // invert only on selector bits
+    } else if (k === 'enabled') b.enabled = t.checked;
+    else if (k === 'mode') b.mode = +t.value;
+    else if (k === 'resetBank') { const v = parseInt(t.value, 10); if (!isNaN(v) && v >= 0) b.resetBank = v & 0xff; }
+    else if (k === 'start') { const v = parseHex(t.value); b.start = v === null ? null : v & 0xffff; autoEnd(b); }
+    else if (k === 'end') { const v = parseHex(t.value); b.end = v === null ? null : v & 0xffff; }   // typed by hand
+    else { const v = parseHex(t.value); if (v !== null) b[k] = v & 0xffff; }
+    renderBanks();
+  });
+  $('bankrows').addEventListener('click', async (e) => {
+    const t = e.target;
+    if (t.dataset.bdel !== undefined) { banks.splice(+t.dataset.bdel, 1); renderBanks(); }
+    else if (t.dataset.bprev !== undefined) { const b = banks[+t.dataset.bprev]; b.preview = !b.preview; renderBanks(); }
+    else if (t.dataset.bpick !== undefined) {
+      const f = await window.loader.pickBin(); if (!f) return;
+      const b = banks[+t.dataset.bpick];
+      Object.assign(b, { file: f.path, name: f.name, size: f.size, crc: f.crc }); autoEnd(b); renderBanks();
+    }
+    else if (t.dataset.bclr !== undefined) {
+      const me = bankLayout().find(x => x.i === +t.dataset.bclr);
+      if (!me) { log('window not sent'); return; }
+      try { await window.loader.clearBank(me.win); log('BANK_CLEAR window ' + me.win); } catch (err) { log('error: ' + err.message); }
+    }
+  });
+  $('btnAddBank').onclick = async () => {
+    const f = await window.loader.pickBin();
+    if (!f) return;
+    banks.push({ file: f.path, name: f.name, size: f.size, crc: f.crc, start: null, end: null, mode: 1,
+                 regAddr: 0x0000, regMask: 0xFFFF, bits: 0, inv: 0, resetBank: 0, enabled: true, preview: false });
+    renderBanks();
+  };
+  $('btnBankState').onclick = () => window.loader.bankState().catch((e) => log('error: ' + e.message));
+
+  // Send all the enabled windows (after the regions).
+  async function sendBanks() {
+    for (const L of bankLayout()) {
+      const b = banks[L.i], chk = bankCheck(L.i);
+      if (chk.err.length) { log('window ' + b.name + ' NOT sent: ' + chk.err.join('; ')); continue; }
+      try {
+        log('sending window ' + L.win + ': ' + b.name + ' -> ' + hex(b.start) + '-' + hex(b.end) +
+            ', register ' + hex(b.regAddr) + '/' + hex(b.regMask) + ' bit ' + hex2(b.bits) + ' inv ' + hex2(b.inv));
+        const res = await window.loader.sendBank({
+          file: b.file, win: L.win, firstPage: b.start >> 8, npages: (b.end - b.start + 1) >> 8, mode: b.mode,
+          imgBase: L.imgBase, regAddr: b.regAddr, regMask: b.regMask, bits: b.bits, inv: b.inv, resetBank: b.resetBank,
+        });
+        log('  ok, ' + res.bytes + ' bytes in the pool @ ' + hex(L.imgBase));
+      } catch (err) { log('  error: ' + err.message); }
+    }
+  }
+
+  // Warn about overlapping regions (e.g. a 32 KB file loaded at 0x8000 also
+  // covers C000-FFFF: RAM, I/O, video).
+  function checkRegionOverlaps() {
+    const en = regions.filter(r => r.enabled);
+    for (let a = 0; a < en.length; a++) {
+      const ra = en[a];
+      if (ra.start + ra.size > 0x10000) log('WARNING: ' + ra.name + ' goes past 0xFFFF');
+      for (let c = a + 1; c < en.length; c++) {
+        const rc = en[c];
+        if (ra.start <= rc.start + rc.size - 1 && rc.start <= ra.start + ra.size - 1)
+          log('WARNING: ' + ra.name + ' and ' + rc.name + ' overlap');
+      }
+    }
+  }
+
+  function render() {
+    const tb = $('rows'); tb.innerHTML = '';
+    regions.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        `<td><input type="checkbox" ${r.enabled ? 'checked' : ''} data-i="${i}" class="en"></td>` +
+        (r.file
+          ? `<td>${r.name} <span class="muted">(${r.size} B)</span><div class="bar"><i data-bar="${i}"></i></div></td>`
+          : `<td><input type="text" class="genname" value="${r.name}" data-i="${i}" data-k="name" placeholder="name"> ` +
+            `<input type="text" class="gensize" value="${r.size}" data-i="${i}" data-k="size" placeholder="bytes" title="Size in bytes">` +
+            `<div class="bar"><i data-bar="${i}"></i></div></td>`) +
+        `<td class="muted crc">${crcHex(r.crc)}</td>` +
+        `<td><input type="text" class="addr" value="${hex(r.start)}" data-i="${i}" data-k="start"></td>` +
+        `<td class="muted">${hex(r.start)}–${hex(r.start + r.size - 1)}</td>` +
+        `<td><select data-i="${i}" data-k="mode">${MODES.map(([v, n]) => `<option value="${v}" ${String(r.mode) === v ? 'selected' : ''}>${n}</option>`).join('')}</select></td>` +
+        `<td class="row-actions">` +
+          `<button data-up="${i}" ${i === 0 ? 'disabled' : ''} title="Move up">▲</button>` +
+          `<button data-down="${i}" ${i === regions.length - 1 ? 'disabled' : ''} title="Move down">▼</button>` +
+          `<button data-clr="${i}">clear</button> <button data-del="${i}">✕</button>` +
+        `</td>`;
+      tb.appendChild(tr);
+    });
+    renderBanks();   // window warnings also depend on the regions
+  }
+
+  // ---- table events (delegated) ----
+  $('rows').addEventListener('change', (e) => {
+    const t = e.target, i = +t.dataset.i;
+    if (t.classList.contains('en')) regions[i].enabled = t.checked;
+    else if (t.dataset.k === 'mode') regions[i].mode = +t.value;
+    else if (t.dataset.k === 'start') { const v = parseInt(t.value.replace(/^0x/i, ''), 16); if (!isNaN(v)) regions[i].start = v & 0xffff; render(); }
+    else if (t.dataset.k === 'name') regions[i].name = t.value.trim() || 'Region';
+    else if (t.dataset.k === 'size') { const v = parseInt(t.value, 10); if (!isNaN(v) && v > 0) regions[i].size = v; render(); }
+  });
+  $('rows').addEventListener('click', async (e) => {
+    const t = e.target;
+    if (t.dataset.del !== undefined) { regions.splice(+t.dataset.del, 1); render(); }
+    else if (t.dataset.clr !== undefined) {
+      const r = regions[+t.dataset.clr];
+      try { await window.loader.clearRegion(r.start, r.size); log('CLEAR ' + hex(r.start) + ' len ' + r.size); } catch (err) { log('error: ' + err.message); }
+    }
+    else if (t.dataset.up !== undefined) {
+      const i = +t.dataset.up;
+      if (i > 0) { [regions[i - 1], regions[i]] = [regions[i], regions[i - 1]]; render(); }
+    }
+    else if (t.dataset.down !== undefined) {
+      const i = +t.dataset.down;
+      if (i < regions.length - 1) { [regions[i], regions[i + 1]] = [regions[i + 1], regions[i]]; render(); }
+    }
+  });
+
+  // ---- toolbar ----
+  $('btnAdd').onclick = async () => {
+    const f = await window.loader.pickBin();
+    if (!f) return;
+    const next = regions.length ? (regions[regions.length - 1].start + regions[regions.length - 1].size) & 0xffff : 0x8000;
+    regions.push({ file: f.path, name: f.name, size: f.size, crc: f.crc, start: next, mode: 1, enabled: true });
+    render();
+  };
+  $('btnAddRegion').onclick = () => {
+    // Plain region without a file: address/size/mode only (typically RAM);
+    // name and size stay editable in the table.
+    const next = regions.length ? (regions[regions.length - 1].start + regions[regions.length - 1].size) & 0xffff : 0x8000;
+    regions.push({ file: null, name: 'Region', size: 256, crc: null, start: next, mode: 2, enabled: true });
+    render();
+  };
+  $('btnSendAll').onclick = async () => {
+    checkRegionOverlaps();
+    for (const r of regions) {
+      if (!r.enabled) continue;
+      try {
+        log('sending ' + r.name + ' -> ' + hex(r.start) + ' (' + MODES.find(m => +m[0] === r.mode)[1] + ')');
+        if (r.file) {
+          const res = await window.loader.sendRegion(r.file, r.start, r.mode);
+          log('  ok, ' + res.bytes + ' bytes');
+        } else {
+          await window.loader.setMode(r.start, r.size, r.mode);
+          log('  ok, mapped (' + r.size + ' bytes, no data)');
+        }
+      } catch (err) { log('  error: ' + err.message); }
+    }
+    await sendBanks();   // after the regions: the window sets the mode of its pages
+    window.loader.listRegions().catch(() => {});
+    if (bankLayout().length) window.loader.bankState().catch(() => {});
+  };
+  $('btnList').onclick = () => window.loader.listRegions().catch((e) => log('error: ' + e.message));
+  // Last host/port used: remembered between runs (app localStorage).
+  function saveConn() {
+    try { localStorage.setItem('conn', JSON.stringify({ host: $('host').value.trim(), port: $('port').value.trim() })); } catch (_) {}
+  }
+  try {
+    const c = JSON.parse(localStorage.getItem('conn') || 'null');
+    if (c && c.host) $('host').value = c.host;
+    if (c && c.port) $('port').value = c.port;
+  } catch (_) {}
+  $('host').addEventListener('change', saveConn);
+  $('port').addEventListener('change', saveConn);
+  $('btnConn').onclick = () => { saveConn(); window.loader.connect($('host').value.trim(), +$('port').value.trim() || 3334); };
+  $('btnDisc').onclick = () => window.loader.disconnect();
+  $('btnSave').onclick = async () => {
+    // The board address is NOT part of the game config: the app remembers the
+    // last host/port used on its own (saveConn).
+    const cfg = { regions,
+                  banks: banks.map(({ preview, ...b }) => b),
+                  watches: watches.map(({ name, addr, len, src }) => ({ name, addr, len, src })) };
+    const p = await window.loader.saveConfig(cfg); if (p) log('config saved: ' + p);
+  };
+  $('btnLoad').onclick = async () => {
+    const r = await window.loader.loadConfig(); if (!r) return;
+    // host/port found in old files are ignored
+    regions = (r.cfg.regions || []).map(x => ({ ...x }));
+    banks = (r.cfg.banks || []).map(x => ({ preview: false, ...x }));
+    bankLive = [];
+    watches = (r.cfg.watches || []).map(x => newWatch(x));
+    render(); renderWatches(); log('config loaded: ' + r.path);
+  };
+
+  // ================= Tabs =================
+  document.querySelectorAll('nav.tabs .tab').forEach((b) => b.onclick = () => {
+    document.querySelectorAll('nav.tabs .tab').forEach((x) => x.classList.toggle('on', x === b));
+    ['tabMem', 'tabDebug'].forEach((id) => { $(id).hidden = (id !== b.dataset.tab); });
+    if (b.dataset.tab === 'tabDebug') $('termIn').focus();
+  });
+
+  // ================= Watch =================
+  // { name, addr, len (1..16), src (0 mirror, 1 CPU view) } + runtime state:
+  // data (last read), prev (previous), changes, time, err, reqId
+  const W_MAX = 16;
+  let watches = [];
+  let mapConnected = false;
+  let wReq = 0;                  // MAP_READ request ids (0..255)
+  const wPending = new Map();    // id -> watch
+  let wTimer = null;
+
+  function newWatch(x) {
+    return { name: x.name || 'range', addr: (x.addr || 0) & 0xffff, len: Math.min(W_MAX, Math.max(1, x.len || 16)),
+             src: x.src ? 1 : 0, data: null, prev: null, changes: 0, time: '', err: '' };
+  }
+
+  function renderWatches() {
+    const tb = $('wrows'); tb.innerHTML = '';
+    watches.forEach((w, i) => {
+      let cells = '';
+      for (let k = 0; k < w.len; k++) {
+        if (!w.data || k >= w.data.length) { cells += '<span class="na">--</span>'; continue; }
+        const chg = w.prev && k < w.prev.length && w.prev[k] !== w.data[k];
+        cells += `<span${chg ? ' class="chg"' : ''}>${hex2(w.data[k])}</span>`;
+      }
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        `<td><input type="text" class="wname" value="${w.name}" data-wi="${i}" data-wk="name"></td>` +
+        `<td><input type="text" class="addr" value="${hex(w.addr)}" data-wi="${i}" data-wk="addr"></td>` +
+        `<td><input type="text" class="wlen" value="${w.len}" data-wi="${i}" data-wk="len" title="byte, 1..${W_MAX}"></td>` +
+        `<td><select data-wi="${i}" data-wk="src"><option value="0" ${w.src ? '' : 'selected'}>mirror</option>` +
+            `<option value="1" ${w.src ? 'selected' : ''}>CPU view</option></select></td>` +
+        `<td class="wdata">${cells}${w.err ? `<div class="msg-err">${w.err}</div>` : ''}</td>` +
+        `<td class="muted" title="last read ${w.time}">${w.changes}</td>` +
+        `<td class="row-actions"><button data-wread="${i}" title="Refresh">⟳</button> <button data-wdel="${i}">✕</button></td>`;
+      tb.appendChild(tr);
+    });
+  }
+
+  function watchRead(w) {
+    if (!mapConnected) { $('wStatus').textContent = 'not connected (Connect at the top)'; return; }
+    const id = wReq; wReq = (wReq + 1) & 0xff;
+    w.reqId = id; wPending.set(id, w);
+    window.loader.memRead(id, w.addr, w.len, w.src).catch((e) => { $('wStatus').textContent = 'error: ' + e.message; });
+  }
+  function watchReadAll() {
+    if (wPending.size > watches.length * 2) wPending.clear();   // lost answers: do not pile up
+    watches.forEach(watchRead);
+  }
+
+  $('wrows').addEventListener('change', (e) => {
+    const t = e.target, i = +t.dataset.wi, k = t.dataset.wk;
+    if (isNaN(i) || !k) return;
+    const w = watches[i];
+    if (k === 'name') w.name = t.value.trim() || 'range';
+    else if (k === 'addr') { const v = parseHex(t.value); if (v !== null) { w.addr = v & 0xffff; w.data = w.prev = null; w.changes = 0; } }
+    else if (k === 'len') { const v = parseInt(t.value, 10); if (!isNaN(v)) { w.len = Math.min(W_MAX, Math.max(1, v)); w.data = w.prev = null; w.changes = 0; } }
+    else if (k === 'src') { w.src = +t.value; w.data = w.prev = null; w.changes = 0; }
+    renderWatches();
+  });
+  $('wrows').addEventListener('click', (e) => {
+    const t = e.target;
+    if (t.dataset.wdel !== undefined) { watches.splice(+t.dataset.wdel, 1); renderWatches(); }
+    else if (t.dataset.wread !== undefined) watchRead(watches[+t.dataset.wread]);
+  });
+  $('wAdd').onclick = () => {
+    const last = watches[watches.length - 1];
+    watches.push(newWatch({ name: 'range ' + (watches.length + 1), addr: last ? (last.addr + last.len) & 0xffff : 0, len: W_MAX, src: 0 }));
+    renderWatches();
+  };
+  $('wRefresh').onclick = watchReadAll;
+  $('wAuto').onchange = () => {
+    if (wTimer) { clearInterval(wTimer); wTimer = null; }
+    const ms = +$('wAuto').value;
+    if (ms) wTimer = setInterval(() => { if (mapConnected && watches.length) watchReadAll(); }, ms);
+  };
+
+  // MAP_DATA answer: id, addr:u16, len, src, data[len]
+  function onMapData(d) {
+    const w = wPending.get(d[0]); wPending.delete(d[0]);
+    if (!w || w.reqId !== d[0]) return;           // range deleted or request superseded
+    const data = d.slice(5, 5 + d[3]);
+    if (w.data && w.data.length === data.length && data.some((v, k) => v !== w.data[k])) w.changes++;
+    w.prev = w.data; w.data = data; w.err = '';
+    w.time = new Date().toLocaleTimeString();
+    $('wStatus').textContent = 'last read ' + w.time;
+    renderWatches();
+  }
+
+  // ================= Terminal =================
+  const T_MAXCHARS = 200000;
+  let termHist = [], termHistPos = 0, termOn = false;
+  function termAppend(t) {
+    const el = $('termOut');
+    const atEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
+    let s = el.textContent + t.replace(/\r\n/g, '\n').replace(/\r/g, '');
+    if (s.length > T_MAXCHARS) s = s.slice(s.length - T_MAXCHARS);
+    el.textContent = s;
+    if (atEnd) el.scrollTop = el.scrollHeight;
+  }
+  let termQueued = null;          // command given before the terminal was connected
+  async function termSend(line) {
+    if (!termOn) {                 // connect automatically and send once connected
+      termQueued = line;
+      termAppend('\n[connecting to the console ' + $('host').value.trim() + ':3335...]\n');
+      window.loader.termConnect($('host').value.trim(), 3335).catch((e) => termAppend('[error: ' + e.message + ']\n'));
+      return;
+    }
+    termAppend(line + '\n');                       // the firmware does not echo
+    try { await window.loader.termSend(line); } catch (e) { termAppend('[error: ' + e.message + ']\n'); }
+  }
+  $('tConn').onclick = () => window.loader.termConnect($('host').value.trim(), 3335);
+  $('tDisc').onclick = () => window.loader.termDisconnect();
+  $('tClear').onclick = () => { $('termOut').textContent = ''; };
+  document.querySelectorAll('.tq').forEach((b) => b.onclick = () => termSend(b.dataset.cmd));
+  $('termIn').addEventListener('keydown', (e) => {
+    const inp = $('termIn');
+    if (e.key === 'Enter') {
+      const line = inp.value;
+      if (line.trim() && termHist[termHist.length - 1] !== line) termHist.push(line);
+      if (termHist.length > 200) termHist.shift();
+      termHistPos = termHist.length; inp.value = '';
+      termSend(line);
+    } else if (e.key === 'ArrowUp') {
+      if (termHistPos > 0) { termHistPos--; inp.value = termHist[termHistPos]; } e.preventDefault();
+    } else if (e.key === 'ArrowDown') {
+      if (termHistPos < termHist.length) termHistPos++;
+      inp.value = termHistPos < termHist.length ? termHist[termHistPos] : ''; e.preventDefault();
+    }
+  });
+  window.loader.onTermData((t) => termAppend(t));
+  window.loader.onTermStatus((s) => {
+    termOn = s.connected;
+    $('tStatus').textContent = s.connected ? 'connected' : ('disconnected' + (s.error ? ' (' + s.error + ')' : ''));
+    $('tStatus').className = s.connected ? 'msg-ok' : 'muted';
+    $('tConn').classList.toggle('primary', !s.connected);
+    $('tDisc').classList.toggle('primary', s.connected);
+    if (!s.connected) { termAppend('\n[terminal disconnected' + (s.error ? ': ' + s.error : '') + ']\n'); termQueued = null; }
+    else {
+      if (termQueued !== null) { const q = termQueued; termQueued = null; setTimeout(() => termSend(q), 300); }
+      if (!$('tabDebug').hidden) $('termIn').focus();
+    }
+  });
+  // click in the output = type in the command line (unless selecting text)
+  $('termOut').addEventListener('mouseup', () => { if (!String(window.getSelection())) $('termIn').focus(); });
+
+  // ---- from main ----
+  window.loader.onStatus((s) => {
+    const el = $('status');
+    el.textContent = s.connected ? 'connected' : ('disconnected' + (s.error ? ' (' + s.error + ')' : ''));
+    el.className = s.connected ? 'on' : '';
+    mapConnected = !!s.connected;
+    if (!s.connected) wPending.clear();
+    // Highlight in blue the next action: Connect when disconnected, Disconnect when connected
+    $('btnConn').classList.toggle('primary', !s.connected);
+    $('btnDisc').classList.toggle('primary', s.connected);
+  });
+  window.loader.onProgress((p) => { if (p.bank) { banks.forEach((b, i) => { if (b.name === p.name) { const bar = document.querySelector(`i[data-bbar="${i}"]`); if (bar) bar.style.width = (100 * p.sent / p.total) + '%'; } }); return; } const b = document.querySelector(`[data-bar]`); const el = document.querySelector(`i[data-bar]`); regions.forEach((r, i) => { if (r.name === p.name) { const bar = document.querySelector(`i[data-bar="${i}"]`); if (bar) bar.style.width = (100 * p.sent / p.total) + '%'; } }); });
+  window.loader.onFrame((f) => {
+    if (f.type === 0x81) log('ACK cmd 0x' + (f.payload[0] || 0).toString(16));
+    else if (f.type === 0x82) {  // MAP_INFO
+      const d = f.payload; const n = d[0] || 0; let s = 'active regions: ' + n;
+      for (let k = 0, o = 1; k < n; k++, o += 5) { const st = d[o] | (d[o + 1] << 8), ln = d[o + 2] | (d[o + 3] << 8), md = d[o + 4]; s += `\n  ${hex(st)} len ${ln} mode ${md}`; }
+      log(s);
+    } else if (f.type === 0x83) {  // MAP_ERR
+      const cmd = f.payload[0] || 0, code = f.payload[1] || 0;
+      if (cmd === 0x09) {   // MAP_READ (watch): [cmd, code, id]
+        const msg = code === 2 ? 'CPU view: no clock on the bus, read not done' : 'invalid read request (code ' + code + ')';
+        const w = wPending.get(f.payload[2]); wPending.delete(f.payload[2]);
+        if (w) { w.err = msg; w.time = new Date().toLocaleTimeString(); }
+        $('wStatus').textContent = msg; renderWatches();
+        return;
+      }
+      const why = (cmd === 0x06) ? ' (' + (BANK_ERR[code] || '?') + ')' : (cmd === 0x05 ? ' (image outside the pool)' : '');
+      log('ERR cmd 0x' + cmd.toString(16) + ' code ' + code + why);
+    } else if (f.type === 0x84) {  // BANK_INFO
+      const d = f.payload, n = d[0] || 0; bankLive = []; let s = 'bank windows on the board:';
+      for (let k = 0, o = 1; k < n; k++, o += 10) {
+        const w = { win: d[o], active: d[o + 1], first: d[o + 2], npages: d[o + 3], nbanks: d[o + 4], cur: d[o + 5],
+                    switches: (d[o + 6] | (d[o + 7] << 8) | (d[o + 8] << 16) | (d[o + 9] << 24)) >>> 0 };
+        bankLive[w.win] = w;
+        if (w.active) s += `\n  window ${w.win}: ${hex(w.first << 8)}-${hex(((w.first + w.npages) << 8) - 1)}` +
+                           ` bank ${w.cur}/${w.nbanks}, switches ${w.switches}`;
+      }
+      if (!bankLive.some(w => w && w.active)) s += ' none active';
+      log(s); renderBanks();
+    } else if (f.type === 0x85) onMapData(f.payload);   // MAP_DATA (watch)
+  });
+
+  render();
+  renderWatches();
+</script>
+</body>
+</html>

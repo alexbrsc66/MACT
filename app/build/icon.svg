@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22262f"/>
+      <stop offset="1" stop-color="#14161b"/>
+    </linearGradient>
+    <radialGradient id="ball" cx="38%" cy="34%" r="70%">
+      <stop offset="0" stop-color="#ffe6a8"/>
+      <stop offset="45%" stop-color="#ffd479"/>
+      <stop offset="100%" stop-color="#d9a53f"/>
+    </radialGradient>
+    <linearGradient id="stick" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b7cff"/>
+      <stop offset="1" stop-color="#3a5bdc"/>
+    </linearGradient>
+  </defs>
+
+  <!-- sfondo -->
+  <rect x="0" y="0" width="256" height="256" rx="52" fill="url(#bg)"/>
+  <rect x="6" y="6" width="244" height="244" rx="47" fill="none" stroke="#3a3f4b" stroke-width="3"/>
+
+  <!-- base joystick -->
+  <ellipse cx="128" cy="196" rx="72" ry="22" fill="#0f1116"/>
+  <ellipse cx="128" cy="192" rx="72" ry="22" fill="#262a33" stroke="#3a3f4b" stroke-width="3"/>
+
+  <!-- pulsanti arcade sulla base -->
+  <circle cx="76" cy="196" r="11" fill="#e5484d"/>
+  <circle cx="76" cy="193" r="11" fill="#ff6b6f"/>
+  <circle cx="180" cy="196" r="11" fill="#3a8a5c"/>
+  <circle cx="180" cy="193" r="11" fill="#57d38c"/>
+
+  <!-- asta -->
+  <rect x="118" y="96" width="20" height="104" rx="10" fill="url(#stick)"/>
+
+  <!-- pallina joystick -->
+  <circle cx="128" cy="88" r="46" fill="url(#ball)"/>
+  <circle cx="128" cy="88" r="46" fill="none" stroke="#a97a2e" stroke-width="2" opacity="0.5"/>
+  <ellipse cx="110" cy="70" rx="14" ry="9" fill="#fff" opacity="0.35"/>
+</svg>

@@ -1,0 +1,17 @@
+# Text files: stored with LF, converted as usual on checkout.
+* text=auto
+
+# Published files are stored byte for byte (no line-ending conversion), so they
+# always match SHA256SUMS.
+*.hex      -text
+*.bin      -text
+*.asm      -text
+*.csv      -text
+*.json     -text
+*.zip      binary
+*.pdf      binary
+*.png      binary
+*.jpg      binary
+*.icns     binary
+*.ico      binary
+SHA256SUMS -text

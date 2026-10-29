@@ -1,0 +1,6 @@
+"Refs","Value","Footprint","Qty"
+"JP1","OPEN STOP CLOSED AUTOSTART","TestPoint:TestPoint_2Pads_Pitch2.54mm_Drill0.8mm","1"
+"JP2","OPEN 6502 CLOSED Z80","TestPoint:TestPoint_2Pads_Pitch2.54mm_Drill0.8mm","1"
+"U1","6502","Package_DIP:DIP-40_W15.24mm","1"
+"U2","Z84C00AB6","Package_DIP:DIP-40_W15.24mm","1"
+"U3","NUCLEOH723ZG","NUCLEOH723ZG:MODULE_NUCLEOH723ZG","1"
