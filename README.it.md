@@ -42,6 +42,7 @@ gira al 99,7% del clock reale, sia col gioco sia con la demo.
 | [`docs/`](docs/) | [guida rapida a MACT Studio](docs/mact-studio.md), [guida al firmware](docs/firmware.md) (in inglese), [protocollo di rete](docs/protocol.md) |
 | [`demos/`](demos/) | programmi demo per le schede Arkanoid e Sprint 2 |
 | [`LICENSES/`](LICENSES/) | licenze di terze parti del codice contenuto nel firmware |
+| [`tools/`](tools/) | [simulatore della scheda](tools/mact_board_sim.py): per provare MACT Studio senza scheda |
 
 In questa prima versione i sorgenti del firmware non sono pubblicati.
 
@@ -57,6 +58,11 @@ In questa prima versione i sorgenti del firmware non sono pubblicati.
    l'aiuto, `go` per partire. La stessa console è sulla porta TCP 3335.
 
 Tutti i dettagli nella [guida al firmware](docs/firmware.md).
+
+Non hai la scheda sottomano? Lancia il simulatore su un computer qualsiasi con
+Python 3 (`python3 tools/mact_board_sim.py`): risponde a MACT Studio come il
+firmware (caricamento ROM, finestre a banchi, watch, console) e stampa
+l'indirizzo a cui collegarsi.
 
 ## Compatibilità elettrica
 

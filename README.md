@@ -40,6 +40,7 @@ with all ROMs served by the MCU, and an Atari Sprint 2 board (6502) runs at
 | [`docs/`](docs/) | [MACT Studio quick guide](docs/mact-studio.md), [firmware user guide](docs/firmware.md), [network protocol](docs/protocol.md) |
 | [`demos/`](demos/) | demo programs for the Arkanoid and Sprint 2 boards |
 | [`LICENSES/`](LICENSES/) | third-party licenses of the code inside the firmware |
+| [`tools/`](tools/) | [board simulator](tools/mact_board_sim.py): try MACT Studio without a board |
 
 The firmware source code is not published in this first release.
 
@@ -55,6 +56,11 @@ The firmware source code is not published in this first release.
    `go` to start. The same console is on TCP port 3335.
 
 Full details in the [firmware user guide](docs/firmware.md).
+
+No board at hand? Run the simulator on any computer with Python 3
+(`python3 tools/mact_board_sim.py`): it answers MACT Studio like the firmware
+(ROM upload, bank windows, memory watch, console) and prints the address to
+connect to.
 
 ## Electrical compatibility
 
